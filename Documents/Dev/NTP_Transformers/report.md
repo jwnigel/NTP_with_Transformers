@@ -1,6 +1,37 @@
 # Report -- A description of code and analysis of results
 ## By Nigel Wright
 
+
+
+# Tokenization and Data Processing
+
+## Overview
+The tokenization pipeline uses the GPT-2 tokenizer as a base and builds a custom vocabulary from the WikiText-2 dataset. It handles the conversion between text and token IDs and prepares sequence data for next token prediction.
+
+## Vocabulary Building
+1. Uses GPT-2 tokenizer to split text into tokens
+2. Counts token frequencies across the entire training corpus
+3. Filters out tokens with frequency < 5
+4. Keeps the top 10,000 most frequent tokens
+5. Adds special tokens: `<PAD>`, `<UNK>`, `<BOS>`, `<EOS>`
+
+## Sequence Preparation
+For next token prediction training:
+1. Each text is encoded as a sequence of token IDs
+2. Creates sliding windows of 8 tokens (sequence_length)
+3. For each window, the input is the 8 tokens and the target is the 9th token
+4. This creates (input, target) pairs for training
+
+## Data Pipeline
+1. Load the WikiText-2 dataset (train/val/test splits)
+2. Build vocabulary from training data
+3. Create sequence data for all splits
+4. Save processed data to JSON files for later use
+
+This approach ensures consistent tokenization across all models and provides a clean interface for working with text data.
+
+
+
 # Baseline Model
 
 ## Word Embeddings
@@ -52,32 +83,5 @@ Then we do next token prediction using the transformer encoder and taken the las
 
 The output layer is a linear layer to convert the transformers output from embedding dim to vocab size, and produce logits for each token in the vocab. 
 
-
-# Tokenization and Data Processing
-
-## Overview
-The tokenization pipeline uses the GPT-2 tokenizer as a base and builds a custom vocabulary from the WikiText-2 dataset. It handles the conversion between text and token IDs and prepares sequence data for next token prediction.
-
-## Vocabulary Building
-1. Uses GPT-2 tokenizer to split text into tokens
-2. Counts token frequencies across the entire training corpus
-3. Filters out tokens with frequency < 5
-4. Keeps the top 10,000 most frequent tokens
-5. Adds special tokens: `<PAD>`, `<UNK>`, `<BOS>`, `<EOS>`
-
-## Sequence Preparation
-For next token prediction training:
-1. Each text is encoded as a sequence of token IDs
-2. Creates sliding windows of 8 tokens (sequence_length)
-3. For each window, the input is the 8 tokens and the target is the 9th token
-4. This creates (input, target) pairs for training
-
-## Data Pipeline
-1. Load the WikiText-2 dataset (train/val/test splits)
-2. Build vocabulary from training data
-3. Create sequence data for all splits
-4. Save processed data to JSON files for later use
-
-This approach ensures consistent tokenization across all models and provides a clean interface for working with text data.
 
 
