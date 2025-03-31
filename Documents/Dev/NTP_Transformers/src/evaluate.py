@@ -3,6 +3,8 @@ import json
 import torch
 import torch.nn as nn
 from tqdm import tqdm
+import time
+import os
 
 from dataset import get_dataloaders, get_vocab_size
 from baseline_model import BaselineNTPModel, evaluate as baseline_evaluate
@@ -74,19 +76,68 @@ def evaluate_model(args):
     )
     model = model.to(device)
     
-    # Evaluate
+    # Add timing setup
+    start_time = time.time()
+    
+    # Evaluate with comprehensive metrics
     criterion = nn.CrossEntropyLoss()
-    test_loss, test_acc = evaluate_fn(model, test_loader, criterion, device)
+    metrics = evaluate_fn(model, test_loader, criterion, device)
     
-    print(f"\nTest Results for {args.model} model:")
-    print(f"  Loss: {test_loss:.4f}")
-    print(f"  Accuracy: {test_acc:.4f}")
+    # Calculate model size
+    num_params = sum(p.numel() for p in model.parameters())
     
-    # Generate some predictions
+    # Calculate perplexity
+    perplexity = torch.exp(torch.tensor(metrics['loss'])).item()
+    
+    # Print comprehensive results
+    print(f"\nComprehensive Test Results for {args.model} model:")
+    print(f"Model Size: {num_params:,} parameters")
+    print(f"Loss: {metrics['loss']:.4f}")
+    print(f"Perplexity: {perplexity:.2f}")
+    print("\nAccuracy:")
+    print(f"  Top-1: {metrics['top_k_accuracy'][1]*100:.2f}%")
+    print(f"  Top-3: {metrics['top_k_accuracy'][3]*100:.2f}%")
+    print(f"  Top-5: {metrics['top_k_accuracy'][5]*100:.2f}%")
+    print(f"\nAverage Inference Time: {metrics['avg_inference_time']*1000:.2f}ms per batch")
+    
+    # Save metrics if requested
+    if args.save_metrics:
+        results = {
+            'model_type': args.model,
+            'model_size': num_params,
+            'perplexity': perplexity,
+            'loss': metrics['loss'],
+            'accuracy': {
+                'top_1': metrics['top_k_accuracy'][1],
+                'top_3': metrics['top_k_accuracy'][3],
+                'top_5': metrics['top_k_accuracy'][5]
+            },
+            'avg_inference_time_ms': metrics['avg_inference_time'] * 1000,
+            'embedding_dim': args.embedding_dim,
+            'batch_size': args.batch_size
+        }
+        
+        # Add model-specific parameters
+        if args.model == 'transformer':
+            results.update({
+                'nhead': args.nhead,
+                'num_layers': args.num_layers,
+                'dim_feedforward': args.dim_feedforward,
+                'dropout': args.dropout
+            })
+        
+        # Save to file
+        metrics_path = f"models/{args.model}_metrics.json"
+        os.makedirs(os.path.dirname(metrics_path), exist_ok=True)
+        with open(metrics_path, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nMetrics saved to {metrics_path}")
+    
+    # Generate predictions if requested
     if args.generate:
         generate_predictions(model, test_loader, device, num_samples=5)
     
-    return test_loss, test_acc
+    return metrics
 
 
 def generate_predictions(model, dataloader, device, num_samples=5):
@@ -146,6 +197,8 @@ def main():
                         help='Batch size for evaluation')
     parser.add_argument('--generate', action='store_true',
                         help='Generate and print some predictions')
+    parser.add_argument('--save_metrics', action='store_true',
+                        help='Save evaluation metrics to file')
     
     args = parser.parse_args()
     

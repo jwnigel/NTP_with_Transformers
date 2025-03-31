@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 
 
 class BaselineNTPModel(nn.Module):
@@ -96,28 +97,44 @@ def train_epoch(model, dataloader, optimizer, criterion, device):
     return total_loss / len(dataloader), correct / total
 
 
-def evaluate(model, dataloader, criterion, device):
+def evaluate(model, dataloader, criterion, device, k_values=[1, 3, 5]):
     """Evaluate the model on a dataset."""
     model.eval()
     total_loss = 0
-    correct = 0
     total = 0
+    correct_topk = {k: 0 for k in k_values}
+    inference_times = []
     
     with torch.no_grad():
         for batch in dataloader:
             inputs = batch['input'].to(device)
             targets = batch['target'].to(device)
             
-            # Forward pass
+            # Measure inference time
+            start_time = time.time()
             logits = model(inputs)
-            loss = criterion(logits, targets)
+            inference_times.append(time.time() - start_time)
             
-            # Track statistics
+            # Calculate loss
+            loss = criterion(logits, targets)
             total_loss += loss.item()
             
-            # Calculate accuracy
-            _, predicted = torch.max(logits, 1)
-            correct += (predicted == targets).sum().item()
+            # Calculate top-k accuracy
+            for k in k_values:
+                _, topk_indices = torch.topk(logits, k, dim=1)
+                correct_topk[k] += torch.any(topk_indices == targets.unsqueeze(1), dim=1).sum().item()
+            
             total += targets.size(0)
     
-    return total_loss / len(dataloader), correct / total 
+    # Calculate metrics
+    avg_loss = total_loss / len(dataloader)
+    perplexity = torch.exp(torch.tensor(avg_loss)).item()
+    topk_accuracy = {k: correct_topk[k] / total for k in k_values}
+    avg_inference_time = sum(inference_times) / len(inference_times)
+    
+    return {
+        'loss': avg_loss,
+        'perplexity': perplexity,
+        'top_k_accuracy': topk_accuracy,
+        'avg_inference_time': avg_inference_time
+    } 

@@ -53,9 +53,9 @@ def train(args):
     
     # Initialize optimizer and loss function
     if args.optimizer == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=0.0001)
     elif args.optimizer == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.SGD(model.parameters(), lr=0.0001)
     else:
         raise ValueError(f"Unknown optimizer: {args.optimizer}")
     
@@ -154,8 +154,8 @@ def main():
                         help='Model type: baseline or transformer')
     
     # Common parameters
-    parser.add_argument('--embedding_dim', type=int, default=128, 
-                        help='Dimension of word embeddings')
+    parser.add_argument('--embedding_dim', type=int, choices=[32, 64, 128], default=128,
+                      help='Embedding dimension (can be reduced for resource constraints)')
     
     # Baseline model parameters
     parser.add_argument('--hidden_dims', type=int, nargs='+', default=[256, 128],
@@ -176,8 +176,8 @@ def main():
                         help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=10,
                         help='Number of training epochs')
-    parser.add_argument('--learning_rate', type=float, default=0.001,
-                        help='Learning rate')
+    parser.add_argument('--learning_rate', type=float, default=0.0001,
+                        help='Learning rate (default: 0.0001)')
     parser.add_argument('--optimizer', type=str, default='adam', choices=['adam', 'sgd'],
                         help='Optimizer: adam or sgd')
     
