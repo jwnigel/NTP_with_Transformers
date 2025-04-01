@@ -48,19 +48,11 @@ class BaselineNTPModel(nn.Module):
         Returns:
             logits: Prediction logits [batch_size, vocab_size]
         """
-        # Get embeddings
         embeddings = self.embedding(x)  # [batch_size, seq_length, embedding_dim]
         
-        # Combine embeddings by averaging
+        # Combine embeddings by averaging, similar to Continuous Bag of Words (CBOW)
         combined = torch.mean(embeddings, dim=1)  # [batch_size, embedding_dim]
         
-        # Alternative: Combine by max pooling
-        # combined = torch.max(embeddings, dim=1)[0]  # [batch_size, embedding_dim]
-        
-        # Alternative: Combine by concatenation
-        # combined = embeddings.view(embeddings.size(0), -1)  # [batch_size, seq_length * embedding_dim]
-        
-        # Pass through feed-forward layers
         logits = self.feedforward(combined)  # [batch_size, vocab_size]
         
         return logits

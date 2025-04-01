@@ -32,7 +32,7 @@ class PositionalEncoding(nn.Module):
         # Add batch dimension
         pe = pe.unsqueeze(0)
         
-        # Register buffer -- for paramaters that are stored but not updated
+        # Register buffer -- for paramaters that are stored but not updated like positional encodings
         self.register_buffer('pe', pe)
         
     def forward(self, x):
@@ -116,11 +116,11 @@ class TransformerNTPModel(nn.Module):
         # Add positional encoding
         x = self.positional_encoding(x)  # [batch_size, seq_length, embedding_dim]
         
-        # Pass through transformer encoder
-        # We want to predict the next token after the sequence, so we use the representation
-        # of the last token in the sequence
-        transformer_output = self.transformer_encoder(x, src_mask)  # [batch_size, seq_length, embedding_dim]
-        sequence_representation = transformer_output[:, -1, :]  # [batch_size, embedding_dim]
+        # Pass through all layers of transformer encoder
+        transformer_output = self.transformer_encoder(x, src_mask) 
+       
+        # Get last token representation to predict next token
+        sequence_representation = transformer_output[:, -1, :] 
         
         # Pass through output layer
         logits = self.output_layer(sequence_representation)  # [batch_size, vocab_size]
